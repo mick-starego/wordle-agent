@@ -174,7 +174,7 @@ class Wordle:
         """
         words_scores = {word: 0 for word in self.valid_words}
         for guess in self.valid_words:
-            for target in random.sample(self.valid_words, num_samples):
+            for target in random.sample(list(self.valid_words), num_samples):
                 constraints = []
                 positional_matches = set()
                 for i in range(5):
