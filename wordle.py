@@ -27,8 +27,10 @@ class Wordle:
         The first object returned is a dict with the following structure:
             {
                 "A": {
-                    "ALL": <Set of all words containing 'A'>,
                     "NOT": <Set of all words not containing 'A'>
+                    "ALL-0": <Set of all words containing 'A' NOT at index 0>,
+                    ...
+                    "ALL-4": <Set of all words containing 'A' NOT at index 4>,
                     0: <Set of all words with 'A' at index 0>
                     ...
                     4: <Set of all words with 'A' at index 4>
@@ -41,13 +43,22 @@ class Wordle:
 
         :returns dict with aforementioned structure and set of all words
         """
-        words_tree = {letter: {k: set() for k in ["ALL", "NOT", 0, 1, 2, 3, 4]} for letter in string.ascii_uppercase}
+        # Construct dict
+        words_tree = {}
+        for letter in string.ascii_uppercase:
+            words_tree[letter] = {k: set() for k in ["ALL-0", "ALL-1", "ALL-2", "ALL-3", "ALL-4", "NOT", 0, 1, 2, 3, 4]}
+
+        # Read in dictionary file
         with open(file_name) as file:
             all_words = set((s.strip() for s in file.readlines()))
+
+        # Fill with data
         for word in all_words:
             for letter in words_tree:
                 if letter in word:
-                    words_tree[letter]["ALL"].add(word)
+                    for i in range(5):
+                        if word[i] != letter:
+                            words_tree[letter]["ALL-%d" % i].add(word)
                 else:
                     words_tree[letter]["NOT"].add(word)
             for index, member in enumerate(word):
@@ -82,7 +93,7 @@ class Wordle:
                 constraints.append((guess[i], i))
             elif s == "*":
                 # Non-positional match
-                constraints.append((guess[i], "ALL"))
+                constraints.append((guess[i], "ALL-%d" % i))
             else:
                 # No match
                 constraints.append((guess[i], "NOT"))
@@ -108,7 +119,7 @@ class Wordle:
                 constraints.append((guess[i], i))
             elif s in target:
                 # Non-positional match
-                constraints.append((guess[i], "ALL"))
+                constraints.append((guess[i], "ALL-%d" % i))
             else:
                 # No match
                 constraints.append((guess[i], "NOT"))
@@ -172,13 +183,13 @@ class Wordle:
                         constraints.append((guess[i], i))
                 shared_letters = set(guess).intersection(set(target))
                 constraints.extend(
-                    [(letter, "ALL") for letter in shared_letters.difference(positional_matches)] +
-                    [(letter, "NOT") for letter in set(guess).difference(shared_letters)]
+                    [(s, "ALL-%d" % guess.index(s)) for s in shared_letters.difference(positional_matches)] +
+                    [(s, "NOT") for s in set(guess).difference(shared_letters)]
                 )
                 words_scores[guess] += self.calculate_elims(constraints)
         return words_scores
 
-    def next_guess(self, is_first_move, first_moves_file, max_samples=50):
+    def next_guess(self, move, first_moves_file, max_samples=50):
         """
         Compute the next guess.
 
@@ -187,7 +198,7 @@ class Wordle:
         If this file is not present, it will be generated. This generation process will take
         approximately 3-5 minutes.
 
-        :param is_first_move: true if this is the first move
+        :param move: move number, starts at 0
         :param first_moves_file: file containing viable first move options
         :param max_samples: the maximum number of samples to send to self.sample_valid_words()
                             used to prevent egregiously long runtimes.
@@ -195,19 +206,23 @@ class Wordle:
         """
         # If this is the first move, return randomly-selected word from first_moves_file
         # if that file exists.
-        if is_first_move and exists(first_moves_file):
+        if move == 0 and exists(first_moves_file):
             with open(first_moves_file) as file:
                 move = random.choice([s.strip() for s in file.readlines()])
                 if move in self.valid_words:
                     return move
-        if is_first_move:
+        elif move == 5:
+            return random.choice(list(self.valid_words))
+
+        # Tell the user to be patient if generating first moves
+        if move == 0:
             print("Hold tight. Generating first move options. This will take about 5 mins.")
 
         # Compute scores
         words_scores = self.sample_valid_words(min(len(self.valid_words), max_samples))
 
         # Write first move data to file if necessary
-        if is_first_move:
+        if move == 0:
             with open(first_moves_file, "w+") as file:
                 file.write("\n".join(sorted(words_scores, key=words_scores.get, reverse=True)[0:100]))
 
@@ -253,7 +268,7 @@ class Wordle:
         :return: number of moves if win, -1 if loss
         """
         for move in range(0, 6):
-            guess = self.next_guess(move == 0, first_moves_file)
+            guess = self.next_guess(move, first_moves_file)
             new_constraints, is_solved = self.get_constraint_input_automated(guess, target)
             if is_solved:
                 return move
@@ -268,7 +283,7 @@ class Wordle:
         :return:
         """
         for move in range(1, 7):
-            guess = self.next_guess(move == 1, first_moves_file)
+            guess = self.next_guess(move - 1, first_moves_file)
             print("Move %d: %s" % (move, guess))
             new_constraints, is_solved = self.get_constraint_input(guess)
             if is_solved:

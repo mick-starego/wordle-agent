@@ -46,13 +46,13 @@ All necessary input files are provided in this repo. If you are just interested 
 * Using the command line option `--test <num tests>` will simulate the specified number of test and print a report the agent's performance
 
 #### Test Results
-Here are the results of simulating 1,000 games. In this test, the agent achieved a win rate of approximately 80%.
+Here are the results of simulating 500 games. In this test, the agent achieved a win rate of 92.4%.
 ```
 Solved in 1 moves: 0.0%
-Solved in 2 moves: 0.9%
-Solved in 3 moves: 9.9%
-Solved in 4 moves: 24.8%
-Solved in 5 moves: 26.9%
-Solved in 6 moves: 16.8%
-Unsolved: 20.7%
+Solved in 2 moves: 1.6%
+Solved in 3 moves: 19.4%
+Solved in 4 moves: 41.6%
+Solved in 5 moves: 20.4%
+Solved in 6 moves: 9.4%
+Unsolved: 7.6%
 ```
