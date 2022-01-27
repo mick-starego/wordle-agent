@@ -1,5 +1,6 @@
 import string
 import random
+import progressbar
 from sys import argv
 from functools import reduce
 from os.path import exists
@@ -10,17 +11,24 @@ class Wordle:
     Class representing an agent that can play the popular word game "Wordle"
     """
 
-    def __init__(self, dict_file_name):
+    def __init__(self, dict_file, first_moves_file, alphabet):
         # Data structures that define the dictionary of five-letter words
-        self.words_tree, self.all_words = self.parse_dictionary(dict_file_name)
+        self.words_tree, self.all_words = self.parse_dictionary(dict_file, alphabet)
+
+        # File containing first move options
+        self.first_moves_file = first_moves_file
+
+        # If true will prevent printing game info
+        self.silent = False
 
         # The words that are still valid at the current stage of the game. This
         # is the only instance variable that is updated during gameplay. To reset
         # this field to its original value, use self.reset()
         self.valid_words = self.all_words.copy()
+        self.first_move_subset = self.valid_words.copy()
 
     @classmethod
-    def parse_dictionary(cls, file_name):
+    def parse_dictionary(cls, file_name, alphabet):
         """
         Parses the provided dictionary file and provides two useful data structures.
 
@@ -45,12 +53,12 @@ class Wordle:
         """
         # Construct dict
         words_tree = {}
-        for letter in string.ascii_uppercase:
+        for letter in alphabet:
             words_tree[letter] = {k: set() for k in ["ALL-0", "ALL-1", "ALL-2", "ALL-3", "ALL-4", "NOT", 0, 1, 2, 3, 4]}
 
         # Read in dictionary file
         with open(file_name) as file:
-            all_words = set((s.strip() for s in file.readlines()))
+            all_words = set((s.strip().upper() for s in file.readlines()))
 
         # Fill with data
         for word in all_words:
@@ -125,11 +133,16 @@ class Wordle:
                 constraints.append((guess[i], "NOT"))
         return constraints, guess == target
 
+    def log(self, s="", override=False):
+        if not self.silent or override:
+            print(s)
+
     def reset(self):
         """
         Reset instance variables so that the game can be played again.
         """
         self.valid_words = self.all_words.copy()
+        self.first_move_subset = self.all_words.copy()
 
     def calculate_elims(self, constraints):
         """
@@ -151,8 +164,28 @@ class Wordle:
         possibility_sets.sort(key=len)
         return len(self.valid_words) - len(reduce(lambda a, b: a.intersection(b), possibility_sets))
 
-    def sample_valid_words(self, num_samples):
+    def update_valid_words(self, new_constraints, is_first_move):
         """
+        Update self.valid_words based on a new set of constraints.
+        :param new_constraints: new constraints
+        :param is_first_move true if this is the first move
+        """
+        possibility_sets = [self.words_tree[c[0]][c[1]] for c in new_constraints]
+        possibility_sets.append(self.valid_words)
+        possibility_sets.sort(key=len)
+        self.valid_words = reduce(lambda a, b: a.intersection(b), possibility_sets)
+        if is_first_move:
+            self.first_move_subset = self.valid_words.copy()
+
+    def next_guess(self, move, is_hard_mode, max_samples=50):
+        """
+        Compute the next guess.
+
+        Because of the runtime of this algorithm on the first move, it is recommended to provide
+        a static file that contains one or more words that the first move can be selected from.
+        If this file is not present, it will be generated. This generation process will take
+        approximately 3-5 minutes.
+
         Score each valid word based on the number of valid words it is expected to eliminate. I.e.
         for every scenario that can occur on the next move (a scenario consists of a guess word and
         a target word), which guess word results in the greatest reduction in the size of
@@ -169,12 +202,38 @@ class Wordle:
         given that constraint. Thus, the set of all valid words is the intersection of all the
         constraint sets and the current self.valid_words.
 
-        :param num_samples: Number of scenarios to test per word in self.valid_words
-        :return: A dict mapping each word to its score. Higher is better.
+        :param move: move number, starts at 0
+        :param is_hard_mode" true if the game is in hard mode
+        :param max_samples: the maximum number of samples to send to self.sample_valid_words()
+                            used to prevent egregiously long runtimes.
+        :return: the next guess word
         """
-        words_scores = {word: 0 for word in self.valid_words}
-        for guess in self.valid_words:
-            for target in random.sample(list(self.valid_words), num_samples):
+        # If this is the first move, return randomly-selected word from first_moves_file
+        # if that file exists.
+        if move == 0 and exists(self.first_moves_file):
+            with open(self.first_moves_file) as file:
+                move = random.choice([s.strip() for s in file.readlines()])
+                if move in self.valid_words:
+                    return move
+        elif move == 5:
+            return random.choice(list(self.valid_words))
+        elif len(self.valid_words) == 1:
+            return self.valid_words.copy().pop()
+
+        # Tell the user to be patient if generating first moves
+        if move == 0:
+            self.log("\nHold tight. Generating first move options. This will take about 5 mins.", True)
+
+        # Determine the set of possible guesses. If in hard mode, always use self.valid_words
+        # If in standard mode, use self.valid_words if that set contains less elements than
+        # there are moves left in the game (i.e. a win is certain), otherwise use
+        # self.first_move_subset.
+        guess_set = self.valid_words if is_hard_mode or len(self.valid_words) <= 6 - move else self.first_move_subset
+
+        # Compute scores
+        words_scores = {word: 0 for word in guess_set}
+        for guess in guess_set:
+            for target in random.sample(list(self.valid_words), min(len(self.valid_words), max_samples)):
                 constraints = []
                 positional_matches = set()
                 for i in range(5):
@@ -187,137 +246,120 @@ class Wordle:
                     [(s, "NOT") for s in set(guess).difference(shared_letters)]
                 )
                 words_scores[guess] += self.calculate_elims(constraints)
-        return words_scores
-
-    def next_guess(self, move, first_moves_file, max_samples=50):
-        """
-        Compute the next guess.
-
-        Because of the runtime of this algorithm on the first move, it is recommended to provide
-        a static file that contains one or more words that the first move can be selected from.
-        If this file is not present, it will be generated. This generation process will take
-        approximately 3-5 minutes.
-
-        :param move: move number, starts at 0
-        :param first_moves_file: file containing viable first move options
-        :param max_samples: the maximum number of samples to send to self.sample_valid_words()
-                            used to prevent egregiously long runtimes.
-        :return: the next guess word
-        """
-        # If this is the first move, return randomly-selected word from first_moves_file
-        # if that file exists.
-        if move == 0 and exists(first_moves_file):
-            with open(first_moves_file) as file:
-                move = random.choice([s.strip() for s in file.readlines()])
-                if move in self.valid_words:
-                    return move
-        elif move == 5:
-            return random.choice(list(self.valid_words))
-
-        # Tell the user to be patient if generating first moves
-        if move == 0:
-            print("Hold tight. Generating first move options. This will take about 5 mins.")
-
-        # Compute scores
-        words_scores = self.sample_valid_words(min(len(self.valid_words), max_samples))
 
         # Write first move data to file if necessary
         if move == 0:
-            with open(first_moves_file, "w+") as file:
+            self.log("Finished generating first move options.", True)
+            with open(self.first_moves_file, "w+") as file:
                 file.write("\n".join(sorted(words_scores, key=words_scores.get, reverse=True)[0:100]))
 
         # Compute max score and return move
         max_score = max(words_scores.values())
         return random.choice([k for k in words_scores if words_scores[k] == max_score])
 
-    def update_valid_words(self, new_constraints):
-        """
-        Update self.valid_words based on a new set of constraints.
-        :param new_constraints: new constraints
-        """
-        possibility_sets = [self.words_tree[c[0]][c[1]] for c in new_constraints]
-        possibility_sets.append(self.valid_words)
-        possibility_sets.sort(key=len)
-        self.valid_words = reduce(lambda a, b: a.intersection(b), possibility_sets)
-
-    def run_test_games(self, num_games, first_moves_file):
+    def run_test_games(self, num_games, is_hard_mode):
         """
         Testing harness that will simulate running num_games games. Win/lose statistics
         will be printed once all simulations are complete.
 
         :param num_games: number of games to run
-        :param first_moves_file: file containing first moves
+        :param is_hard_mode: true if the game is in hard mode
         """
+        # Simulate games
         results = {k: 0 for k in range(-1, 6)}
-        for _ in range(num_games):
-            moves = self.cpu_play_automated(random.choice(list(self.all_words)), first_moves_file)
+        for _ in progressbar.progressbar(range(num_games)):
+            moves = self.play(is_hard_mode, random.choice(list(self.all_words)), True)
             results[moves] += 1
             self.reset()
-        for i in range(-1, 6):
-            if i >= 0:
-                print("Solved in %d moves: %0.1f%%" % (i + 1, results[i] * 100.0 / num_games))
-            else:
-                print("Unsolved: %0.1f%%" % (results[i] * 100.0 / num_games))
 
-    def cpu_play_automated(self, target, first_moves_file):
-        """
-        Automated game runner method designed to be used with self.run_test_games().
+        # Print game length breakdown
+        self.log("-" * 50, True)
+        for i in range(0, 6):
+            self.log("Solved in %d moves: %0.1f%%" % (i + 1, results[i] * 100.0 / num_games))
+        self.log("Unsolved: %0.1f%%" % (results[-1] * 100.0 / num_games))
 
-        :param target: the target word
-        :param first_moves_file: file containing first moves
-        :return: number of moves if win, -1 if loss
-        """
-        for move in range(0, 6):
-            guess = self.next_guess(move, first_moves_file)
-            new_constraints, is_solved = self.get_constraint_input_automated(guess, target)
-            if is_solved:
-                return move
-            self.update_valid_words(new_constraints)
-        return -1
+        # Print result stats
+        solved_games = sum((v for k, v in results.items() if k >= 0))
+        weighted_avg = sum(((k + 1) * (v / solved_games) for k, v in results.items() if k >= 0))
+        self.log("-" * 50)
+        self.log("Average solution length: %0.2f moves" % weighted_avg)
+        self.log("Win rate: %0.2f%%" % (100 - (results[-1] * 100.0 / num_games)))
+        self.log("-" * 50 + "\n")
 
-    def cpu_play(self, first_moves_file):
+    def play(self, is_hard_mode, target=None, silent=False):
         """
         Game runner method.
-
-        :param first_moves_file: file containing first moves
-        :return:
         """
-        for move in range(1, 7):
-            guess = self.next_guess(move - 1, first_moves_file)
-            print("Move %d: %s" % (move, guess))
-            new_constraints, is_solved = self.get_constraint_input(guess)
+        # Capture initial value of silent, then update
+        init_silent = self.silent
+        self.silent = silent
+
+        self.log("\n" + "=" * 50)
+        self.log(("#" * 18) + (" " * 4) + "WORDLE" + (" " * 4) + ("#" * 18))
+        self.log("-" * 50 + "\n")
+        for move in range(0, 6):
+            # Compute next guess
+            guess = self.next_guess(move, is_hard_mode)
+            self.log("Move %d: %s" % (move + 1, guess))
+
+            # Get new constraints, check if solved
+            if target is None:
+                new_constraints, is_solved = self.get_constraint_input(guess)
+            else:
+                new_constraints, is_solved = self.get_constraint_input_automated(guess, target)
+
+            # Update valid word set
+            self.update_valid_words(new_constraints, move == 0)
+
+            # Check if solved or impossible
             if is_solved:
-                print("Solved in %d moves! Answer is \"%s\"" % (move, guess))
-                return
-            self.update_valid_words(new_constraints)
-            if len(self.valid_words) == 0:
-                print("I'm all out of possibilities! Double check your input.")
-                return
-            print()
-        print("Sorry, no solution was reached in 6 moves")
+                self.log("\nSolved in %d moves! Answer is \"%s\"\n" % (move + 1, guess))
+                self.log("-" * 50 + "\n")
+                self.silent = init_silent
+                return move
+            elif len(self.valid_words) == 0:
+                self.log("\nI'm out of possibilities! Double check your input.\n")
+                self.log("-" * 50 + "\n")
+                self.silent = init_silent
+                return -1
+            self.log()
+
+        # If loop completes without returning, the puzzle is unsolved
+        self.log("\nSorry, no solution was reached in 6 moves.\n")
+        self.log("-" * 50 + "\n")
+        self.silent = init_silent
+        return -1
 
 
 def main():
     # Parse command line args
-    dictionary_file = "dict.txt"
-    first_moves_file = "first-moves.txt"
+    dictionary_file = "dicts/wordle.txt"
+    first_moves_file = "dicts/wordle-first-moves.txt"
+    alphabet = string.ascii_uppercase
     is_test_mode = False
+    is_hard_mode = False
+    target = None
     num_tests = 0
     for i, arg in enumerate(argv):
         if arg == "--test" and len(argv) > i + 1:
             is_test_mode = True
             num_tests = int(argv[i + 1])
-        elif arg == "--first-moves" and len(argv) > i + 1:
-            first_moves_file = argv[i + 1]
         elif arg == "--dict" and len(argv) > i + 1:
             dictionary_file = argv[i + 1]
+            first_moves_file = dictionary_file.split(".")[0] + "-first-moves.txt"
+        elif arg == "--target" and len(argv) > i + i:
+            target = argv[i + 1].upper()
+        elif arg == "--hard":
+            is_hard_mode = True
+        elif arg == "--numeric":
+            alphabet = "0123456789"
 
     # Run wordle
-    wordle = Wordle(dictionary_file)
+    wordle = Wordle(dictionary_file, first_moves_file, alphabet)
     if is_test_mode:
-        wordle.run_test_games(num_tests, first_moves_file)
+        wordle.run_test_games(num_tests, is_hard_mode)
     else:
-        wordle.cpu_play(first_moves_file)
+        wordle.play(is_hard_mode, target)
 
 
 if __name__ == "__main__":
