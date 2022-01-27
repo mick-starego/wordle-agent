@@ -74,7 +74,7 @@ class Wordle:
         return words_tree, all_words
 
     @classmethod
-    def get_constraint_input(cls, guess):
+    def get_constraints_from_user(cls, guess):
         """
         After a guess has been made, the user must respond with a string representing
         the validity of each letter in the guess string. The user input must be 5 characters
@@ -108,7 +108,7 @@ class Wordle:
         return constraints, result == "+++++"
 
     @classmethod
-    def get_constraint_input_automated(cls, guess, target):
+    def get_constraints_from_target(cls, guess, target):
         """
         Same purpose as above method, but designed to be used by an automated tester.
         Thus, instead of receiving user input, this method takes the target word as
@@ -257,7 +257,7 @@ class Wordle:
         max_score = max(words_scores.values())
         return random.choice([k for k in words_scores if words_scores[k] == max_score])
 
-    def run_test_games(self, num_games, is_hard_mode):
+    def test(self, num_games, is_hard_mode):
         """
         Testing harness that will simulate running num_games games. Win/lose statistics
         will be printed once all simulations are complete.
@@ -304,9 +304,9 @@ class Wordle:
 
             # Get new constraints, check if solved
             if target is None:
-                new_constraints, is_solved = self.get_constraint_input(guess)
+                new_constraints, is_solved = self.get_constraints_from_user(guess)
             else:
-                new_constraints, is_solved = self.get_constraint_input_automated(guess, target)
+                new_constraints, is_solved = self.get_constraints_from_target(guess, target)
 
             # Update valid word set
             self.update_valid_words(new_constraints, move == 0)
@@ -357,7 +357,7 @@ def main():
     # Run wordle
     wordle = Wordle(dictionary_file, first_moves_file, alphabet)
     if is_test_mode:
-        wordle.run_test_games(num_tests, is_hard_mode)
+        wordle.test(num_tests, is_hard_mode)
     else:
         wordle.play(is_hard_mode, target)
 
