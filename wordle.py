@@ -52,9 +52,10 @@ class Wordle:
         :returns dict with aforementioned structure and set of all words
         """
         # Construct dict
-        words_tree = {}
-        for letter in alphabet:
-            words_tree[letter] = {k: set() for k in ["ALL-0", "ALL-1", "ALL-2", "ALL-3", "ALL-4", "NOT", 0, 1, 2, 3, 4]}
+        constraint_set_keys = ["ALL-0", "ALL-1", "ALL-2", "ALL-3", "ALL-4",
+                               "MULT-1", "MULT-2", "MULT-2+", "MULT-3", "MULT-3+", "MULT-4", "MULT-4+", "MULT-5",
+                               "NOT", 0, 1, 2, 3, 4]
+        words_tree = {letter: {k: set() for k in constraint_set_keys} for letter in alphabet}
 
         # Read in dictionary file
         with open(file_name) as file:
@@ -64,11 +65,21 @@ class Wordle:
         for word in all_words:
             for letter in words_tree:
                 if letter in word:
+                    # "ALL" sets
                     for i in range(5):
                         if word[i] != letter:
                             words_tree[letter]["ALL-%d" % i].add(word)
+
+                    # "MULT" sets
+                    count = word.count(letter)
+                    words_tree[letter]["MULT-%d" % count].add(word)
+                    for c in range(2, count + 1):
+                        words_tree[letter]["MULT-%d+" % c].add(word)
                 else:
+                    # "NOT" set
                     words_tree[letter]["NOT"].add(word)
+
+            # index sets
             for index, member in enumerate(word):
                 words_tree[member][index].add(word)
         return words_tree, all_words
@@ -110,28 +121,39 @@ class Wordle:
     @classmethod
     def get_constraints_from_target(cls, guess, target):
         """
-        Same purpose as above method, but designed to be used by an automated tester.
-        Thus, instead of receiving user input, this method takes the target word as
-        a parameter.
+        Same purpose as above method, but using a known target.
 
         :param guess: the guess that has just been made
         :param target: the word that the agent is trying to guess
         :return: a list of new constraints, a boolean representing whether the puzzle is
                  solved (i.e. result == target)
         """
-        # Compute constraints
+        # Compute letter frequencies
+        guess_frequencies = {g: guess.count(g) for g in set(guess)}
+        target_frequencies = {t: target.count(t) for t in set(target)}
+
+        # Compute positional constraints
         constraints = []
-        for i, s in enumerate(guess):
-            if s == target[i]:
+        for i in range(5):
+            if guess[i] == target[i]:
                 # Positional match
                 constraints.append((guess[i], i))
-            elif s in target:
-                # Non-positional match
+            elif guess[i] in target_frequencies:
+                # Incorrect position match
                 constraints.append((guess[i], "ALL-%d" % i))
-            else:
+
+        # Compute non-positional constraints
+        for g in guess_frequencies:
+            if g not in target_frequencies:
                 # No match
-                constraints.append((guess[i], "NOT"))
-        return constraints, guess == target
+                constraints.append((g, "NOT"))
+            elif guess_frequencies[g] > target_frequencies[g]:
+                # Exact multiplicity
+                constraints.append((g, "MULT-%d" % target_frequencies[g]))
+            elif guess_frequencies[g] > 1:
+                # Multiplicity lower bound
+                constraints.append((g, "MULT-%d+" % guess_frequencies[g]))
+        return constraints
 
     def log(self, s="", override=False):
         if not self.silent or override:
@@ -212,9 +234,9 @@ class Wordle:
         # if that file exists.
         if move == 0 and exists(self.first_moves_file):
             with open(self.first_moves_file) as file:
-                move = random.choice([s.strip() for s in file.readlines()])
-                if move in self.valid_words:
-                    return move
+                guess = random.choice([s.strip() for s in file.readlines()])
+                if guess in self.valid_words:
+                    return guess
         elif move == 5:
             return random.choice(list(self.valid_words))
         elif len(self.valid_words) == 1:
@@ -234,17 +256,7 @@ class Wordle:
         words_scores = {word: 0 for word in guess_set}
         for guess in guess_set:
             for target in random.sample(list(self.valid_words), min(len(self.valid_words), max_samples)):
-                constraints = []
-                positional_matches = set()
-                for i in range(5):
-                    if guess[i] == target[i]:
-                        positional_matches.add(guess[i])
-                        constraints.append((guess[i], i))
-                shared_letters = set(guess).intersection(set(target))
-                constraints.extend(
-                    [(s, "ALL-%d" % guess.index(s)) for s in shared_letters.difference(positional_matches)] +
-                    [(s, "NOT") for s in set(guess).difference(shared_letters)]
-                )
+                constraints = self.get_constraints_from_target(guess, target)
                 words_scores[guess] += self.calculate_elims(constraints)
 
         # Write first move data to file if necessary
@@ -306,7 +318,8 @@ class Wordle:
             if target is None:
                 new_constraints, is_solved = self.get_constraints_from_user(guess)
             else:
-                new_constraints, is_solved = self.get_constraints_from_target(guess, target)
+                new_constraints = self.get_constraints_from_target(guess, target)
+                is_solved = guess == target
 
             # Update valid word set
             self.update_valid_words(new_constraints, move == 0)
@@ -347,7 +360,7 @@ def main():
         elif arg == "--dict" and len(argv) > i + 1:
             dictionary_file = argv[i + 1]
             first_moves_file = dictionary_file.split(".")[0] + "-first-moves.txt"
-        elif arg == "--target" and len(argv) > i + i:
+        elif arg == "--target" and len(argv) > i + 1:
             target = argv[i + 1].upper()
         elif arg == "--hard":
             is_hard_mode = True
