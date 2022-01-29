@@ -104,18 +104,33 @@ class Wordle:
         while not (len(result) == result.count("+") + result.count("*") + result.count("-") == 5):
             result = input("Enter result: ")
 
-        # Compute constraints
+        # Compute letter frequencies
+        guess_frequencies = {g: guess.count(g) for g in set(guess)}
+        target_frequencies = {t: 0 for t in set(guess)}
+
+        # Compute positional constraints
         constraints = []
         for i, s in enumerate(result):
             if s == "+":
                 # Positional match
                 constraints.append((guess[i], i))
+                target_frequencies[guess[i]] += 1
             elif s == "*":
-                # Non-positional match
+                # Incorrect position match
                 constraints.append((guess[i], "ALL-%d" % i))
-            else:
+                target_frequencies[guess[i]] += 1
+
+        # Compute non-positional constraints
+        for g in guess_frequencies:
+            if target_frequencies[g] == 0:
                 # No match
-                constraints.append((guess[i], "NOT"))
+                constraints.append((g, "NOT"))
+            elif guess_frequencies[g] > target_frequencies[g]:
+                # Exact multiplicity
+                constraints.append((g, "MULT-%d" % target_frequencies[g]))
+            elif guess_frequencies[g] > 1:
+                # Multiplicity lower bound
+                constraints.append((g, "MULT-%d+" % guess_frequencies[g]))
         return constraints, result == "+++++"
 
     @classmethod
@@ -261,7 +276,7 @@ class Wordle:
 
         # Write first move data to file if necessary
         if move == 0:
-            self.log("Finished generating first move options.", True)
+            self.log("Finished generating first move options.\n", True)
             with open(self.first_moves_file, "w+") as file:
                 file.write("\n".join(sorted(words_scores, key=words_scores.get, reverse=True)[0:100]))
 
