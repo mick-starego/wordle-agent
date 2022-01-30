@@ -30,7 +30,7 @@ class Wordle:
         self.first_move_subset = self.all_words.copy()
 
     @classmethod
-    def parse_dictionary(cls, file_name, alphabet):
+    def parse_dictionary(cls, dict_file, alphabet):
         """
         Parses the provided dictionary file and constructs two useful data structures.
 
@@ -45,7 +45,7 @@ class Wordle:
 
         * (l, i)          ->  The set of words where letter l is at index i
         * (l, "NOT-i")    ->  The set of words containing letter l not at index i
-        * (l, "MULT-n")   ->  The set of words containing n occurrences of letter l
+        * (l, "MULT-n")   ->  The set of words containing exactly n occurrences of letter l
         * (l, "MULT-n+)   ->  The set of words containing at least n occurrences of letter l
         * (l, "NONE")     ->  The set of words not containing letter l
 
@@ -53,6 +53,8 @@ class Wordle:
 
         The second object returned is a set that contains all of the words in the dictionary.
 
+        :param dict_file: the dictionary file
+        :param alphabet: string representing alphabet
         :returns constraint_tree and all_words
         """
         # Construct dict
@@ -64,12 +66,12 @@ class Wordle:
         constraint_tree = {letter: {k: set() for k in constraint_set_keys} for letter in alphabet}
 
         # Read in dictionary file
-        with open(file_name) as file:
+        with open(dict_file) as file:
             all_words = set((s.strip().upper() for s in file.readlines()))
 
         # Fill with data
         for word in all_words:
-            for letter in constraint_tree:
+            for letter in alphabet:
                 if letter in word:
                     # "NOT-i" sets
                     for i in range(5):
