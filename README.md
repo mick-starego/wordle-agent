@@ -12,8 +12,8 @@ string must be five characters long and contain only the following symbols:
 * `-` no match (grey tile)
 
 ### Options
-* `--dict <filename>`
-  * Specify a dictionary file.
+* `--dict <file path>`
+  * Specify a dictionary file path.
   * A dictionary file must contain a collection of five-character words with one word per line.
   * The Wordle dictionary is used by default.
 * `--numeric`
@@ -49,21 +49,30 @@ Solved in 3 moves! Answer is "COULD"
 ## Provided Dictionaries
 This repo includes four dictionaries in the `dicts/` directory. The Wordle dictionary is used by default.
 * Wordle dictionary
+  * `wordle.txt`
   * 2,315 words
   * All possible Wordle target words
 * Stanford dictionary
+  * `stanford.txt`
   * 5,757 words
   * The Stanford GraphBase list of five-letter words
   * Useful for evaluating agent performance on large word list
 * Primes dictionary
+  * `primes.txt`
   * 8,368 words
   * The list of all prime numbers between 10,000 and 99,999
   * Useful for playing Primel
   * When using this dictionary, be sure to add the `--numeric` flag
 * Hockey dictionary
+  * `hockey.txt`
   * 761 words
   * The list of all five-letter NHL player last names, past and present
   * Useful for playing Gordle
+
+### First Moves
+Each dictionary is accompanied by a first-moves file. This file contains the most optimal guess options for the first move.
+Because the process of generating these options is computationally expensive, they loaded from a static file. This file
+must be named with the dictionary file's name suffixed with "-first-moves". If a file matching this pattern does not exist, it will be generated.
 
 ## Testing
 * A testing harness is included that will simulate games and track the agent's success.
@@ -87,7 +96,6 @@ Average solution length: 3.64 moves
 Win rate: 99.93%
 --------------------------------------------------
 ```
-<br>
 
 #### Wordle Dictionary 10k Games Hard Mode
 ```
@@ -104,7 +112,6 @@ Average solution length: 3.62 moves
 Win rate: 99.55%
 --------------------------------------------------
 ```
-<br>
 
 #### Stanford Dictionary 1k Games
 ```
@@ -121,7 +128,6 @@ Average solution length: 4.06 moves
 Win rate: 98.30%
 --------------------------------------------------
 ```
-<br>
 
 #### Stanford Dictionary 1k Games Hard Mode
 ```
@@ -138,4 +144,3 @@ Average solution length: 3.98 moves
 Win rate: 96.10%
 --------------------------------------------------
 ```
-<br>
