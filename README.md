@@ -1,6 +1,11 @@
 # Wordle Agent
 An agent that plays the popular word game Wordle.
 
+## Installation
+* Requires Python 3
+* Requires package `progressbar2`
+  * Run `pip install progressbar2` to install
+
 ## Gameplay
 
 On each turn, the Wordle agent will provide a 5-letter guess word. The user
