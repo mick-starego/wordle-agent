@@ -1,58 +1,141 @@
 # Wordle Agent
-An agent that can play the popular word game Wordle.
+An agent that plays the popular word game Wordle.
 
-### Gameplay
+## Gameplay
 
 On each turn, the Wordle agent will provide a 5-letter guess word. The user
 will respond with a string representing the validity of the guess. This
 string must be five characters long and contain only the following symbols:
 
-* `+` a positional match
-* `*` a non-positional match
-* `-` no match
+* `+` a positional match (green tile)
+* `*` a non-positional match (yellow tile)
+* `-` no match (grey tile)
 
-#### Example Game
-Target word: `KNOLL`
+### Options
+* `--dict <filename>`
+  * Specify a dictionary file.
+  * A dictionary file must contain a collection of five-character words with one word per line.
+  * The Wordle dictionary is used by default.
+* `--numeric`
+  * If present, 0-9 will be used as the alphabet instead of A-Z.
+* `--hard`
+  * Run in hard mode, where all revealed hints must be used in subsequent guesses.
+* `--target <word>`
+  * Run an automated game with a specific target word.
+
+### Example Game
+Target word: `COULD`
 ```
 >>> python wordle.py
-Move 1: STELA
-Enter result: ---+-
 
-Move 2: DOILY
-Enter result: -*-+-
+==================================================
+##################    WORDLE    ##################
+--------------------------------------------------
 
-Move 3: HULLO
-Enter result: --*+*
+Move 1: TRAIN
+Enter result: -----
 
-Move 4: KNOLL
+Move 2: CLOSE
+Enter result: +**--
+
+Move 3: COULD
 Enter result: +++++
-Solved in 4 moves! Answer is "KNOLL"
+
+Solved in 3 moves! Answer is "COULD"
+
+--------------------------------------------------
 ```
 
-### Input Files
-All necessary input files are provided in this repo. If you are just interested in playing the game, skip this section.
-* `dict.txt`
-  * The dictionary of five-letter words provided to the agent
-  * The provided file contains all valid five-letter scrabble words
-  * To specify a different dictionary file use the command line option `--dict <filename>`
-* `first-moves.txt`
-  * This file contains the 100 best first moves computed by the agent
-  * Due to the runtime of computing the first move data, the agent will select the first move from this static file at random
-  * If this file is not present, the agent will generate it. This process will take approximately 5 minutes.
-  * To specify a different first moves file, use the command line option `--first-moves <filename>`
+## Provided Dictionaries
+This repo includes four dictionaries in the `dicts/` directory. The Wordle dictionary is used by default.
+* Wordle dictionary
+  * 2,315 words
+  * All possible Wordle target words
+* Stanford dictionary
+  * 5,757 words
+  * The Stanford GraphBase list of five-letter words
+  * Useful for evaluating agent performance on large word list
+* Primes dictionary
+  * 8,368 words
+  * The list of all prime numbers between 10,000 and 99,999
+  * Useful for playing Primel
+  * When using this dictionary, be sure to add the `--numeric` flag
+* Hockey dictionary
+  * 761 words
+  * The list of all five-letter NHL player last names, past and present
+  * Useful for playing Gordle
 
-### Testing
+## Testing
 * A testing harness is included that will simulate games and track the agent's success.
 * Using the command line option `--test <num tests>` will simulate the specified number of test and print a report the agent's performance
 
-#### Test Results
-Here are the results of simulating 5,000 games. In this test, the agent achieved a win rate of 93.1%.
+### Test Results
+Here are a few benchmark test results.
+
+#### Wordle Dictionary 10k Games
 ```
+--------------------------------------------------
+Solved in 1 moves: 0.1%
+Solved in 2 moves: 5.5%
+Solved in 3 moves: 36.7%
+Solved in 4 moves: 47.4%
+Solved in 5 moves: 8.8%
+Solved in 6 moves: 1.5%
+Unsolved: 0.1%
+--------------------------------------------------
+Average solution length: 3.64 moves
+Win rate: 99.93%
+--------------------------------------------------
+```
+<br>
+
+#### Wordle Dictionary 10k Games Hard Mode
+```
+--------------------------------------------------
+Solved in 1 moves: 0.1%
+Solved in 2 moves: 5.2%
+Solved in 3 moves: 39.8%
+Solved in 4 moves: 43.6%
+Solved in 5 moves: 9.1%
+Solved in 6 moves: 1.8%
+Unsolved: 0.5%
+--------------------------------------------------
+Average solution length: 3.62 moves
+Win rate: 99.55%
+--------------------------------------------------
+```
+<br>
+
+#### Stanford Dictionary 1k Games
+```
+--------------------------------------------------
+Solved in 1 moves: 0.1%
+Solved in 2 moves: 3.5%
+Solved in 3 moves: 21.6%
+Solved in 4 moves: 45.6%
+Solved in 5 moves: 19.9%
+Solved in 6 moves: 7.6%
+Unsolved: 1.7%
+--------------------------------------------------
+Average solution length: 4.06 moves
+Win rate: 98.30%
+--------------------------------------------------
+```
+<br>
+
+#### Stanford Dictionary 1k Games Hard Mode
+```
+--------------------------------------------------
 Solved in 1 moves: 0.0%
-Solved in 2 moves: 1.9%
-Solved in 3 moves: 20.8%
-Solved in 4 moves: 40.9%
-Solved in 5 moves: 21.5%
-Solved in 6 moves: 8.1%
-Unsolved: 6.9%
+Solved in 2 moves: 3.2%
+Solved in 3 moves: 26.4%
+Solved in 4 moves: 42.3%
+Solved in 5 moves: 17.8%
+Solved in 6 moves: 6.4%
+Unsolved: 3.9%
+--------------------------------------------------
+Average solution length: 3.98 moves
+Win rate: 96.10%
+--------------------------------------------------
 ```
+<br>
