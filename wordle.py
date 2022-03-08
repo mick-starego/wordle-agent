@@ -253,10 +253,6 @@ class Wordle:
         of a guess word and a target word), which guess word results in the greatest reduction in
         the size of self.valid_words on average?
 
-        Since it is extremely inefficient to test all possible guess/target pairs, a random sample
-        of size num_samples is taken from self.valid_words and used as the possible targets for each
-        potential guess.
-
         :param move: move number, starts at 0
         :param is_hard_mode: true if the game is in hard mode
         :return: the next guess word
@@ -332,7 +328,8 @@ class Wordle:
         results = {k: 0 for k in range(-1, 6)}
         all_words_list = list(self.all_words)
         random.shuffle(all_words_list)
-        for i in progressbar.progressbar(range(min(max_games, len(self.all_words)))):
+        num_games = min(max_games, len(self.all_words)) if max_games is not None else len(self.all_words)
+        for i in progressbar.progressbar(range(num_games)):
             moves = self.play(is_hard_mode, start, all_words_list[i], True)
             results[moves] += 1
             self.reset()
@@ -345,15 +342,15 @@ class Wordle:
         # Print game length breakdown
         self.log("-" * 50)
         for i in range(0, 6):
-            self.log("Solved in %d moves: %0.1f%%" % (i + 1, results[i] * 100.0 / len(self.all_words)))
-        self.log("Unsolved: %0.1f%%" % (results[-1] * 100.0 / len(self.all_words)))
+            self.log("Solved in %d moves: %0.1f%%" % (i + 1, results[i] * 100.0 / num_games))
+        self.log("Unsolved: %0.1f%%" % (results[-1] * 100.0 / num_games))
 
         # Print result stats
         solved_games = sum((v for k, v in results.items() if k >= 0))
         weighted_avg = sum(((k + 1) * (v / solved_games) for k, v in results.items() if k >= 0))
         self.log("-" * 50)
         self.log("Average solution length: %0.2f moves" % weighted_avg)
-        self.log("Win rate: %0.2f%%" % (100 - (results[-1] * 100.0 / len(self.all_words))))
+        self.log("Win rate: %0.2f%%" % (100 - (results[-1] * 100.0 / num_games)))
         self.log("-" * 50 + "\n")
 
     def play(self, is_hard_mode=False, start=None, target=None, silent=False):
@@ -423,7 +420,7 @@ def main():
     for i, arg in enumerate(argv):
         if arg == "--test":
             is_test_mode = True
-            if len(argv) > i + 1:
+            if len(argv) > i + 1 and argv[i + 1][0:2] != "--":
                 max_num_tests = int(argv[i + 1])
         elif arg == "--dict" and len(argv) > i + 1:
             dictionary_file = argv[i + 1]

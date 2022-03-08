@@ -25,6 +25,8 @@ string must be five characters long and contain only the following symbols:
   * If present, 0-9 will be used as the alphabet instead of A-Z.
 * `--hard`
   * Run in hard mode, where all revealed hints must be used in subsequent guesses.
+* `--start <word>`
+  * Run with a specific start word
 * `--target <word>`
   * Run an automated game with a specific target word.
 
@@ -57,11 +59,6 @@ This repo includes four dictionaries in the `dicts/` directory. The Wordle dicti
   * `wordle.txt`
   * 2,315 words
   * All possible Wordle target words
-* Stanford dictionary
-  * `stanford.txt`
-  * 5,757 words
-  * The Stanford GraphBase list of five-letter words
-  * Useful for evaluating agent performance on large word list
 * Primes dictionary
   * `primes.txt`
   * 8,368 words
@@ -84,68 +81,161 @@ must be named with the dictionary file's name suffixed with "-first-moves". If a
 * Using the command line option `--test <num tests>` will simulate the specified number of test and print a report the agent's performance
 
 ### Test Results
-Here are a few benchmark test results.
+Here are a few benchmark test results. Unless otherwise specified, the number
+of games simulated is equal to the size of the dictionary.
 
-#### Wordle Dictionary 10k Games
-```
---------------------------------------------------
-Solved in 1 moves: 0.1%
-Solved in 2 moves: 5.5%
-Solved in 3 moves: 36.7%
-Solved in 4 moves: 47.4%
-Solved in 5 moves: 8.8%
-Solved in 6 moves: 1.5%
-Unsolved: 0.1%
---------------------------------------------------
-Average solution length: 3.64 moves
-Win rate: 99.93%
---------------------------------------------------
-```
+Note that the `primes.txt` dictionary is too large to efficiently test with the current version of the algorithm. There is room here for future improvements.
 
-#### Wordle Dictionary 10k Games Hard Mode
-```
+#### Wordle Dictionary
+````
 --------------------------------------------------
-Solved in 1 moves: 0.1%
-Solved in 2 moves: 5.2%
-Solved in 3 moves: 39.8%
-Solved in 4 moves: 43.6%
-Solved in 5 moves: 9.1%
-Solved in 6 moves: 1.8%
-Unsolved: 0.5%
---------------------------------------------------
-Average solution length: 3.62 moves
-Win rate: 99.55%
---------------------------------------------------
-```
-
-#### Stanford Dictionary 1k Games
-```
---------------------------------------------------
-Solved in 1 moves: 0.1%
-Solved in 2 moves: 3.5%
-Solved in 3 moves: 21.6%
-Solved in 4 moves: 45.6%
-Solved in 5 moves: 19.9%
-Solved in 6 moves: 7.6%
-Unsolved: 1.7%
---------------------------------------------------
-Average solution length: 4.06 moves
-Win rate: 98.30%
---------------------------------------------------
-```
-
-#### Stanford Dictionary 1k Games Hard Mode
-```
+Start Word: TRACE
 --------------------------------------------------
 Solved in 1 moves: 0.0%
-Solved in 2 moves: 3.2%
-Solved in 3 moves: 26.4%
-Solved in 4 moves: 42.3%
-Solved in 5 moves: 17.8%
-Solved in 6 moves: 6.4%
-Unsolved: 3.9%
+Solved in 2 moves: 3.8%
+Solved in 3 moves: 48.4%
+Solved in 4 moves: 44.8%
+Solved in 5 moves: 3.0%
+Solved in 6 moves: 0.0%
+Unsolved: 0.0%
 --------------------------------------------------
-Average solution length: 3.98 moves
-Win rate: 96.10%
+Average solution length: 3.47 moves
+Win rate: 100.00%
 --------------------------------------------------
-```
+````
+
+#### Hockey Dictionary
+````
+--------------------------------------------------
+Solved in 1 moves: 0.0%
+Solved in 2 moves: 10.0%
+Solved in 3 moves: 63.6%
+Solved in 4 moves: 26.1%
+Solved in 5 moves: 0.3%
+Solved in 6 moves: 0.0%
+Unsolved: 0.0%
+--------------------------------------------------
+Average solution length: 3.17 moves
+Win rate: 100.00%
+--------------------------------------------------
+````
+
+[comment]: <> (#### Wordle Dictionary 10k Games &#40;v1&#41;)
+
+[comment]: <> (```)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Solved in 1 moves: 0.1%)
+
+[comment]: <> (Solved in 2 moves: 5.5%)
+
+[comment]: <> (Solved in 3 moves: 36.7%)
+
+[comment]: <> (Solved in 4 moves: 47.4%)
+
+[comment]: <> (Solved in 5 moves: 8.8%)
+
+[comment]: <> (Solved in 6 moves: 1.5%)
+
+[comment]: <> (Unsolved: 0.1%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Average solution length: 3.64 moves)
+
+[comment]: <> (Win rate: 99.93%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (```)
+
+[comment]: <> (#### Wordle Dictionary 10k Games Hard Mode &#40;v1&#41;)
+
+[comment]: <> (```)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Solved in 1 moves: 0.1%)
+
+[comment]: <> (Solved in 2 moves: 5.2%)
+
+[comment]: <> (Solved in 3 moves: 39.8%)
+
+[comment]: <> (Solved in 4 moves: 43.6%)
+
+[comment]: <> (Solved in 5 moves: 9.1%)
+
+[comment]: <> (Solved in 6 moves: 1.8%)
+
+[comment]: <> (Unsolved: 0.5%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Average solution length: 3.62 moves)
+
+[comment]: <> (Win rate: 99.55%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (```)
+
+[comment]: <> (#### Stanford Dictionary 1k Games &#40;v1&#41;)
+
+[comment]: <> (```)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Solved in 1 moves: 0.1%)
+
+[comment]: <> (Solved in 2 moves: 3.5%)
+
+[comment]: <> (Solved in 3 moves: 21.6%)
+
+[comment]: <> (Solved in 4 moves: 45.6%)
+
+[comment]: <> (Solved in 5 moves: 19.9%)
+
+[comment]: <> (Solved in 6 moves: 7.6%)
+
+[comment]: <> (Unsolved: 1.7%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Average solution length: 4.06 moves)
+
+[comment]: <> (Win rate: 98.30%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (```)
+
+[comment]: <> (#### Stanford Dictionary 1k Games Hard Mode &#40;v1&#41;)
+
+[comment]: <> (```)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Solved in 1 moves: 0.0%)
+
+[comment]: <> (Solved in 2 moves: 3.2%)
+
+[comment]: <> (Solved in 3 moves: 26.4%)
+
+[comment]: <> (Solved in 4 moves: 42.3%)
+
+[comment]: <> (Solved in 5 moves: 17.8%)
+
+[comment]: <> (Solved in 6 moves: 6.4%)
+
+[comment]: <> (Unsolved: 3.9%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (Average solution length: 3.98 moves)
+
+[comment]: <> (Win rate: 96.10%)
+
+[comment]: <> (--------------------------------------------------)
+
+[comment]: <> (```)
